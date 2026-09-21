@@ -22,6 +22,8 @@ upstream-уведомления и ссылки на исходники; ком�
 
 ## SHA-256 поставленных файлов
 
+Диагностика 0.3.1 реализует режим Standard по предоставленному пользователем комплекту Flowseal 1.10.1. В `bundle/utils/targets.txt` восстановлена дополнительная ping-цель Quad9 `9.9.9.9`; движок и BAT-стратегии не заменялись. Состав теста, хеши эталонных скриптов и отличия описаны в `docs/TESTING.md`.
+
 Хеши вычислены 21 сентября 2026 года и совпали с локальной копией указанной
 ревизии Flowseal. Они идентифицируют файлы. Windows Get-AuthenticodeSignature для WinDivert64.sys вернул Valid (Signature verified). Воспроизводимая сборка по исходникам не выполнялась.
 
@@ -51,4 +53,10 @@ upstream-уведомления и ссылки на исходники; ком�
 ## Интерфейс и оболочка
 
 Оригинальный код zapret by nerd3n: MIT, nerd3n (2026), см. LICENSE. Python 3.13.5 поставляется внутри EXE; его уведомления сохранены в PYTHON-LICENSE.txt. GSAP 3.15.0 взят из официального npm-пакета, исходный заголовок сохранён; применяется Standard No Charge License, см. GSAP-LICENSE.txt. Эта лицензия отличается от MIT.
+
+Начиная с 0.3.0 интерфейс работает в отдельном Python-окне. В сборку включены pywebview 6.2.1 (BSD-3-Clause), pythonnet 3.1.0, clr_loader 0.3.1, bottle 0.13.4, proxy_tools 0.1.0, typing_extensions 4.16.0, cffi 2.1.1 и pycparser 3.0. Полные уведомления из установленных пакетов собраны в `DESKTOP-LICENSES.txt`; для proxy_tools текст взят из [репозитория автора](https://github.com/jtushman/proxy_tools/blob/master/LICENSE.txt).
+
+pywebview включает DLL SDK Microsoft.Web.WebView2 версии 1.0.3856.49. Условия и NOTICE получены из [официального NuGet-пакета](https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3856.49) и включены в `DESKTOP-LICENSES.txt`. Сам WebView2 Runtime не входит в архив приложения и устанавливается отдельно на условиях Microsoft. [Правила поставки WebView2](https://learn.microsoft.com/en-us/microsoft-edge/webview2/concepts/distribution).
+
+Исходники окна: [pywebview](https://github.com/r0x0r/pywebview), [pythonnet](https://github.com/pythonnet/pythonnet), [clr-loader](https://github.com/pythonnet/clr-loader). Включение этих компонентов не меняет лицензию оригинального кода оболочки.
 

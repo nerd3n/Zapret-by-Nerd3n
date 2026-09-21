@@ -21,4 +21,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 This license covers the original application code. Third-party components
-in bundle/ and web/vendor/ retain their respective licenses; see THIRD_PARTY.md.
+in bundle/, web/vendor/ and the packaged runtime retain their respective
+licenses; see THIRD_PARTY.md and DESKTOP-LICENSES.txt.

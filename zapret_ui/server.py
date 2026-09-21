@@ -1,6 +1,5 @@
 """Loopback-only server with same-origin and token checks on every mutation."""
 import json
-import mimetypes
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import secrets
@@ -71,12 +70,14 @@ class Handler(BaseHTTPRequestHandler):
                     return self.respond(404, {"error": "Отчёт не найден"})
                 return self.respond(200, path.read_bytes(), download=name)
             allowed = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/styles.css": "styles.css",
-                       "/motion.js": "motion.js", "/vendor/gsap.min.js": "vendor/gsap.min.js"}
+                       "/motion.js": "motion.js", "/vendor/gsap.min.js": "vendor/gsap.min.js",
+                       "/assets/logo.png": "assets/logo.png", "/favicon.ico": "favicon.ico"}
             if parsed.path not in allowed:
                 return self.respond(404, {"error": "Не найдено"})
             path = self.server.webroot / allowed[parsed.path]
-            mime = {".html": "text/html", ".js": "text/javascript", ".css": "text/css"}[path.suffix]
-            return self.respond(200, path.read_bytes(), mime + "; charset=utf-8")
+            mime = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+                    ".css": "text/css; charset=utf-8", ".png": "image/png", ".ico": "image/x-icon"}[path.suffix]
+            return self.respond(200, path.read_bytes(), mime)
         except (ValueError, OSError) as exc:
             self.respond(400, {"error": str(exc)})
 
@@ -110,6 +111,8 @@ class Handler(BaseHTTPRequestHandler):
                 controller.detect_network_async()
             elif self.path == "/api/auto-setup":
                 controller.start_auto_setup()
+            elif self.path in ("/api/service/install", "/api/service/start", "/api/service/stop", "/api/service/remove"):
+                controller.service_action(self.path.rsplit("/", 1)[1], values.get("strategyId"))
             elif self.path == "/api/exit":
                 import threading
                 threading.Thread(target=self.server.shutdown, daemon=True).start()

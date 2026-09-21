@@ -46,7 +46,7 @@ class ControllerLifecycleTests(unittest.TestCase):
         self.assertFalse(self.report()["providerVerifiedByUser"])
 
     def test_cancel_during_checks_stops_further_candidates(self):
-        def interrupted_checks(repeats, event):
+        def interrupted_checks(repeats, event, **kwargs):
             event.set()
             return [{"ok": False, "timeMs": None, "error": "Отменено"}]
 

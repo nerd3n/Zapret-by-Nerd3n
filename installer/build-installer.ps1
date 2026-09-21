@@ -4,14 +4,14 @@ param(
     [string]$CompilerPath = '',
     [string]$OutputDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'dist'),
     [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?$')]
-    [string]$Version = '0.2.0'
+    [string]$Version = '0.3.5'
 )
 
 $ErrorActionPreference = 'Stop'
 $stageRoot = (Resolve-Path -LiteralPath $AppDir).Path
 $requiredFiles = @(
-    'ZapretByNerd3n.exe', 'README.md', 'LICENSE', 'THIRD_PARTY.md',
-    'PYTHON-LICENSE.txt', 'GSAP-LICENSE.txt', 'VERIFICATION.md', 'docs\RELEASING.md',
+    'ZapretByNerd3n.exe', 'assets\app.ico', 'README.md', 'LICENSE', 'THIRD_PARTY.md',
+    'PYTHON-LICENSE.txt', 'GSAP-LICENSE.txt', 'DESKTOP-LICENSES.txt', 'VERIFICATION.md', 'docs\RELEASING.md',
     'profiles\infolink-shchelkovo.json',
     'bundle\general.bat', 'bundle\LICENSE.txt', 'bundle\bin\winws.exe',
     'bundle\bin\WinDivert.dll', 'bundle\bin\WinDivert64.sys',

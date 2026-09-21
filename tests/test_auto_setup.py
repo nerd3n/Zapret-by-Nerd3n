@@ -6,21 +6,26 @@ import unittest
 from unittest.mock import Mock, patch
 
 from zapret_ui import auto_setup, controller
-from zapret_ui.probes import TARGETS
+from zapret_ui.probes import TARGETS, SUITE_ID
 
 
 NETWORK = {"status": "detected", "provider": "Example ISP", "asn": "AS12345", "city": "Example City",
            "country": "Example", "source": "fixture", "fingerprint": "f" * 64, "warning": "External network only", "error": None}
 STRATEGIES = [{"id": "candidate", "name": "Candidate", "experimental": False, "argv": ["never-run.exe"]},
               {"id": "previous", "name": "Previous", "experimental": False, "argv": ["never-run.exe"]}]
+ABSENT_SERVICE = {"supported": True, "installed": False, "owned": False, "running": False,
+                  "status": "not_installed", "state": "not_installed", "pid": None,
+                  "strategyId": None, "strategyName": None, "startType": None,
+                  "path": None, "error": None}
 
 
 def measurement(identifier, success=True):
     checks = [{"target": target.name, "url": target.url, "service": target.service, "attempt": attempt,
+               "mode": target.mode, "status": "OK" if success else "ERROR",
                "ok": success, "error": None, "httpStatus": 200 if success else 0, "timeMs": 100,
-               "scope": "HTTPS/TCP"} for attempt in (1, 2) for target in TARGETS]
+               "scope": SUITE_ID, "suiteId": SUITE_ID} for attempt in (1,) for target in TARGETS]
     return {"strategyId": identifier, "name": identifier, "experimental": False, "checks": checks,
-            "error": None, "cancelled": False}
+            "suiteId": SUITE_ID, "error": None, "cancelled": False}
 
 
 class AutoSetupTests(unittest.TestCase):
@@ -28,7 +33,15 @@ class AutoSetupTests(unittest.TestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         self.base = Path(temporary.name)
-        for patcher in (patch.object(controller, "catalog", return_value=copy.deepcopy(STRATEGIES)),
+        # Scheduling must depend on this fixture, never services installed on
+        # the machine running the test suite. Patch before Controller creation.
+        self.service = Mock(spec=controller.ServiceManager)
+        self.service.status.side_effect = lambda: copy.deepcopy(ABSENT_SERVICE)
+        for operation in ("install", "start", "stop", "remove"):
+            getattr(self.service, operation).side_effect = AssertionError("No service mutations in auto tests")
+        for patcher in (patch.object(controller, "ServiceManager", return_value=self.service),
+                        patch.object(controller, "catalog", return_value=copy.deepcopy(STRATEGIES)),
+                        patch.object(controller, "load_targets", return_value=TARGETS),
                         patch.object(controller, "ProcessJob"),
                         patch.object(controller.Controller, "external_processes", return_value=[])):
             patcher.start()
@@ -47,7 +60,7 @@ class AutoSetupTests(unittest.TestCase):
             self.app.active_id = None
 
         def begin(identifiers, repeats, automatic=False):
-            self.assertEqual(repeats, 2)
+            self.assertEqual(repeats, 1)
             self.assertTrue(automatic)
             self.assertEqual(identifiers, [item["id"] for item in STRATEGIES])
             self.app.job.update(running=False, error=None, results=copy.deepcopy(self.measurements))
@@ -63,6 +76,7 @@ class AutoSetupTests(unittest.TestCase):
         self.admin = self.add_patch(patch.object(controller, "is_admin", return_value=True))
         self.detect = self.add_patch(patch.object(auto_setup, "detect_network", return_value=copy.deepcopy(NETWORK)))
         self.confirm = self.add_patch(patch.object(auto_setup, "run_checks", return_value=measurement("confirm")["checks"]))
+        self.add_patch(patch.object(self.app.auto_cancel, "wait", return_value=False))
         # An accidental production engine launch must fail the test, not affect the host.
         self.add_patch(patch.object(controller.subprocess, "Popen", side_effect=AssertionError("No real process launches in auto tests")))
 
@@ -91,7 +105,9 @@ class AutoSetupTests(unittest.TestCase):
     def test_complete_comparison_rechecks_network_confirms_and_persists(self):
         self.app._auto_worker()
         self.assertEqual(self.detect.call_count, 2)
-        self.confirm.assert_called_once_with(2, self.app.auto_cancel)
+        self.confirm.assert_called_once()
+        self.assertEqual(self.confirm.call_args.args, (1, self.app.auto_cancel))
+        self.assertEqual(self.confirm.call_args.kwargs["targets"], tuple(TARGETS))
         self.assertEqual(self.app.active_id, "candidate")
         self.assertEqual(self.app.auto_setup["status"], "complete")
         self.assertTrue(self.app.auto_setup["recommendation"]["applied"])
@@ -100,14 +116,16 @@ class AutoSetupTests(unittest.TestCase):
         self.assertEqual(settings["preferredStrategyId"], "candidate")
         self.assertFalse(settings["providerVerified"])
         report = json.loads((self.app.data / "reports" / "fixture.json").read_text(encoding="utf-8"))
-        self.assertEqual(report["automaticSetup"]["confirmation"]["passed"], 10)
+        self.assertEqual(report["automaticSetup"]["confirmation"]["passed"], sum(target.mode != "PING" for target in TARGETS))
+        self.assertEqual(settings["setupTestSuite"], SUITE_ID)
         self.assertFalse(report["providerVerifiedByUser"])
 
     def test_perfect_baseline_does_not_start_recommended_engine(self):
         self.measurements[0] = measurement("baseline", True)
         self.app._auto_worker()
         self.assertEqual(self.app.auto_setup["status"], "complete")
-        self.assertTrue(self.app.auto_setup["recommendation"]["bypassNotNeeded"])
+        self.assertFalse(self.app.auto_setup["recommendation"]["bypassNotNeeded"])
+        self.assertEqual(self.app.auto_setup["recommendation"]["status"], "baseline_reachable")
         self.start.assert_not_called()
         self.confirm.assert_not_called()
 
@@ -161,6 +179,20 @@ class AutoSetupTests(unittest.TestCase):
         self.assertEqual(self.app.active_id, "previous")
         self.assertFalse(self.app.auto_setup["recommendation"]["applied"])
         self.assertFalse(self.app.settings["setupCompleted"])
+
+    def test_engine_exit_during_confirmation_is_not_a_successful_report(self):
+        def engine_exits(*args, **kwargs):
+            self.app.active_id = None
+            return measurement("confirm")["checks"]
+        self.confirm.side_effect = engine_exits
+        self.app._auto_worker()
+        self.assertEqual(self.app.active_id, "previous")
+        self.assertFalse(self.app.auto_setup["recommendation"]["applied"])
+        report = json.loads((self.app.data / "reports" / "fixture.json").read_text(encoding="utf-8"))
+        confirmation = report["automaticSetup"]["confirmation"]
+        self.assertFalse(confirmation["complete"])
+        self.assertEqual(confirmation["passed"], 0)
+        self.assertIn("winws", confirmation["error"])
 
     def test_failed_settings_persistence_restores_previous_and_settings(self):
         with patch.object(self.app, "persist_settings", side_effect=OSError("Disk full")):

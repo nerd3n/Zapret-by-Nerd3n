@@ -9,7 +9,7 @@ import threading
 
 from .network_identity import detect_network
 from .recommendation import recommend
-from .probes import TARGETS, run_checks, summarize
+from .probes import SUITE_ID, run_checks, summarize
 
 
 class AutoSetupMixin:
@@ -41,6 +41,10 @@ class AutoSetupMixin:
         self.log("info" if status not in ("error", "blocked") else "warning", reason)
 
     def schedule_auto_setup(self):
+        if self.refresh_service().get("installed"):
+            self.detect_network_async()
+            self._auto_status("disabled", "zapret установлен с автозапуском. Для нового подбора сначала удалите автозапуск.")
+            return
         if not self.settings.get("autoSetupEnabled", True):
             self._auto_status("disabled", "Автоматическая настройка отключена. Её можно запустить вручную.")
         elif self.settings.get("setupCompleted") or self.settings.get("setupCancelled"):
@@ -75,6 +79,7 @@ class AutoSetupMixin:
         with self.operation:
             if self.closing or self.job["running"] or self.auto_running():
                 raise ValueError("Дождитесь завершения текущей операции.")
+            self.check_service_available()
             self.auto_cancel.clear()
             self.cancel.clear()
             self.settings["setupCancelled"] = False
@@ -101,16 +106,18 @@ class AutoSetupMixin:
             if not is_admin():
                 return self._auto_status("blocked", "Провайдер определён. Для автоматического подбора запустите ZapretByNerd3n.exe от имени администратора.")
             self.check_conflicts()
-            self._auto_status("testing", "Сравниваем исходное подключение и все стратегии: по два запроса к каждому адресу.")
-            self.begin_test([s["id"] for s in self.strategies], 2, automatic=True)
+            self._auto_status("testing", "Сравниваем исходное подключение и все стратегии по Flowseal Standard: HTTP, TLS 1.2, TLS 1.3 и ping.")
+            self.begin_test([s["id"] for s in self.strategies], 1, automatic=True)
             self.worker.join()
             if self.auto_cancel.is_set() or self.cancel.is_set() or self.closing:
                 return self._auto_status("cancelled", "Автоподбор отменён. Частичные результаты сохранены.")
             if self.job.get("error"):
                 return self._auto_status("error", self.job["error"])
             results = copy.deepcopy(self.job["results"])
+            targets = tuple(self.test_targets)
+            expected_checks = len(targets)
             baseline = next((r for r in results if r["strategyId"] == "baseline"), None)
-            recommendation = recommend(results, baseline=baseline, expected_checks=2 * len(TARGETS))
+            recommendation = recommend(results, baseline=baseline, expected_checks=expected_checks, targets=targets)
             winner_id = recommendation.get("recommendedId")
             recommendation.update(strategyId=winner_id, applied=False,
                                   name=self.strategy(winner_id)["name"] if winner_id else None)
@@ -129,10 +136,26 @@ class AutoSetupMixin:
                 applying = True
                 self._stop()
                 self._start(winner_id)
-                checks = run_checks(2, self.auto_cancel)
+                self.auto_cancel.wait(5)
+                with self.lock:
+                    self.job.update(currentCheck=0, checksTotal=expected_checks)
+                def progress(check):
+                    with self.lock:
+                        self.job["currentCheck"] += 1
+                        self.job["lastCheck"] = {key: check.get(key) for key in ("target", "mode", "status")}
+                checks = run_checks(1, self.auto_cancel, on_check=progress, targets=targets)
+                engine_error = None if self.running() else "winws завершился во время проверки"
+                if engine_error:
+                    for check in checks:
+                        check.update(ok=False, status="ERROR", error=engine_error)
                 confirmation = {"strategyId": winner_id, "name": self.strategy(winner_id)["name"],
-                                "checks": checks, **summarize(checks), "cancelled": self.auto_cancel.is_set()}
-                confirmed = recommend([confirmation], baseline=baseline, expected_checks=2 * len(TARGETS))
+                                "suiteId": SUITE_ID, "repeats": 1, "expectedChecks": expected_checks,
+                                "expectedHttp": sum(target.mode != "PING" for target in targets),
+                                "expectedPing": sum(target.mode == "PING" for target in targets),
+                                "checks": checks, **summarize(checks, expected_checks=expected_checks),
+                                "cancelled": self.auto_cancel.is_set(), "error": engine_error}
+                confirmation["complete"] = bool(confirmation["complete"] and not engine_error and not self.auto_cancel.is_set())
+                confirmed = recommend([confirmation], baseline=baseline, expected_checks=expected_checks, targets=targets)
                 valid = (not self.auto_cancel.is_set() and self.running() and confirmed.get("recommendedId") == winner_id)
                 if not valid:
                     self._stop()
@@ -140,7 +163,7 @@ class AutoSetupMixin:
                         self._start(original_id)
                     applying = False
                     recommendation.update(strategyId=None, recommendedId=None, applied=False,
-                                          reason="Кандидат не прошёл повторную проверку всех адресов. Предыдущее состояние восстановлено.")
+                                          reason=(engine_error + ". Предыдущее состояние восстановлено.") if engine_error else "Кандидат не прошёл повторную проверку всех адресов. Предыдущее состояние восстановлено.")
                     return self._auto_status("cancelled" if self.auto_cancel.is_set() else "error", recommendation["reason"], recommendation)
                 recommendation["applied"] = True
             with self.operation:
@@ -148,6 +171,7 @@ class AutoSetupMixin:
                     raise ValueError("Автоподбор отменён перед сохранением результата.")
                 self.settings["setupCompleted"] = True
                 self.settings["setupCancelled"] = False
+                self.settings["setupTestSuite"] = SUITE_ID
                 self.settings["preferredStrategyId"] = winner_id
                 self.persist_settings()
             applying = False

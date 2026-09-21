@@ -90,6 +90,16 @@ class ServerBoundaryTests(unittest.TestCase):
         for name in ("../settings.json", "..%2Fsettings.json", "%2e%2e%5Csettings.json", "settings.json:other"):
             self.assertEqual(self.request("GET", "/api/report?name=" + name)[0], 400)
 
+    def test_service_actions_require_session_and_forward_only_action_and_id(self):
+        for action in ("install", "start", "stop", "remove"):
+            path = "/api/service/" + action
+            self.assertEqual(self.request("POST", path, "{}", {"Content-Type": "application/json"})[0], 403)
+            self.controller.service_action.assert_not_called()
+            body = '{"strategyId":"known", "command":"ignored.exe"}'
+            self.assertEqual(self.request("POST", path, body, self.mutation_headers())[0], 200)
+            self.controller.service_action.assert_called_once_with(action, "known")
+            self.controller.reset_mock()
+
     def test_static_page_has_browser_security_headers(self):
         status, headers, body = self.request("GET", "/")
         self.assertEqual(status, 200)
