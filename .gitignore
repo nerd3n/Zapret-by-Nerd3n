@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.venv/
+.build-env/
+build/
+dist/
+*.spec
+/ZapretByNerd3n.exe
+/Zapret-by-nerd3n-Setup.exe
+*.sha256
+data/
+environment-check.json
+bundle/.service/*.log
+bundle/utils/logs/
+bundle/lists/*-user.txt
+bundle/utils/test results/
+bundle/utils/game_filter.enabled
+*.test-backup.txt
+*.backup
+*.log
+.env
+.env.*
+/release-assets/
+/zapret-by-nerd3n-*.zip
+/SHA256SUMS.txt

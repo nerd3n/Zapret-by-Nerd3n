@@ -1,0 +1,15 @@
+{
+  "id": "infolink-shchelkovo",
+  "name": "Инфолинк · Щёлково",
+  "provider": "Инфолинк",
+  "city": "Щёлково",
+  "region": "Московская область",
+  "services": ["YouTube", "Discord"],
+  "providerVerified": false,
+  "strategyVerified": false,
+  "preferredStrategyId": null,
+  "stockStrategiesIncluded": 22,
+  "additionalCandidatesIncluded": 6,
+  "selection": "automatic-measured",
+  "note": "Профиль включён в приложение. Работа стратегий на конкретной линии подтверждается локальными измерениями; видео и голос требуют отдельной проверки."
+}
