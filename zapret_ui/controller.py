@@ -18,6 +18,7 @@ from .process_job import ProcessJob
 from .process_scan import winws_process_ids
 from .auto_setup import AutoSetupMixin
 from .windows_service import ServiceManager, ServiceError
+from .startup_diagnostics import StartupOutput, MESSAGE_OUTPUT_CHARS, save_failure
 
 
 def timestamp():
@@ -305,21 +306,53 @@ class Controller(AutoSetupMixin):
         self.proc = subprocess.Popen(strategy["argv"], cwd=str(Path(self.settings["bundlePath"]) / "bin"),
                                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
                                      **hidden())
-        self.process_job.assign(self.proc)
-        self.active_id = identifier
         process = self.proc
-        def read_output():
-            try:
-                for line in iter(process.stdout.readline, b""):
-                    self.log("engine", line.decode("utf-8", errors="replace").strip())
-            finally:
-                process.stdout.close()
-        threading.Thread(target=read_output, daemon=True).start()
+        output = StartupOutput(process.stdout, self.log)
+        output.start()
+        try:
+            self.process_job.assign(process)
+        except OSError as exc:
+            if process.poll() is not None:
+                self.active_id = None
+                raise self._startup_failure(strategy, process, output, assignment_error=str(exc)) from exc
+            raise
+        self.active_id = identifier
         time.sleep(1.2)
         if process.poll() is not None:
             self.active_id = None
-            raise ValueError(f"winws завершился с кодом {process.returncode}. Подробности в журнале.")
+            raise self._startup_failure(strategy, process, output)
         self.log("info", f"Запущена стратегия {strategy['name']} (PID {process.pid}).")
+
+    def _startup_failure(self, strategy, process, output, *, assignment_error=None):
+        captured = output.wait()
+        record = {"schema": 1, "time": timestamp(), "version": __version__,
+                  "strategyId": strategy["id"], "strategyName": strategy["name"],
+                  "pid": process.pid, "exitCode": process.returncode,
+                  "cwd": str(Path(self.settings["bundlePath"]) / "bin"),
+                  "argv": list(strategy["argv"]), **captured}
+        if assignment_error:
+            record["assignmentError"] = assignment_error
+        message = f"winws завершился с кодом {process.returncode}."
+        if captured["outputTail"]:
+            message += "\nПоследний вывод winws:\n" + captured["outputTail"][-MESSAGE_OUTPUT_CHARS:]
+        else:
+            message += " Вывод процесса не получен."
+        if not captured["readerComplete"]:
+            message += "\nЧтение вывода не завершилось за отведённое время."
+        if captured["readerError"]:
+            message += "\nОшибка чтения вывода: " + captured["readerError"]
+        if assignment_error:
+            message += "\n" + assignment_error
+        try:
+            diagnostic = save_failure(self.data, record)
+            message += f"\nДиагностика сохранена: {diagnostic}"
+        except Exception as exc:
+            message += "\nНе удалось сохранить диагностику: " + str(exc)[:500]
+        try:
+            self.log("error", message)
+        except Exception:
+            pass
+        return ValueError(message)
 
     def start(self, identifier):
         with self.operation:

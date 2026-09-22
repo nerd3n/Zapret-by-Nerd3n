@@ -4,7 +4,7 @@ param(
     [string]$CompilerPath = '',
     [string]$OutputDir = (Join-Path (Split-Path -Parent $PSScriptRoot) 'dist'),
     [ValidatePattern('^[0-9]+\.[0-9]+\.[0-9]+(?:\.[0-9]+)?$')]
-    [string]$Version = '0.3.5'
+    [string]$Version = '0.3.7'
 )
 
 $ErrorActionPreference = 'Stop'

@@ -1,0 +1,65 @@
+# Explicit source files for the standalone EXE. No globs or directory scanning.
+# A plain line keeps its path; source => destination maps release licenses.
+# Runtime *-user.txt files, logs, caches and local settings must never be added.
+bundle/.service/hosts
+bundle/.service/ipset-service.txt
+bundle/.service/version.txt
+bundle/bin/ACTIVE_DISCORD_UDP.bin
+bundle/bin/ACTIVE_GAME_UDP.bin
+bundle/bin/cygwin1.dll
+bundle/bin/quic_initial_4pda_to.bin
+bundle/bin/quic_initial_5ka_ru.bin
+bundle/bin/quic_initial_rutube_ru.bin
+bundle/bin/quic_initial_steamcommunity_com.bin
+bundle/bin/quic_initial_tencent_com.bin
+bundle/bin/quic_initial_www_google_com.bin
+bundle/bin/stun.bin
+bundle/bin/stun2.bin
+bundle/bin/tls_clienthello_4pda_to.bin
+bundle/bin/tls_clienthello_5ka_ru.bin
+bundle/bin/tls_clienthello_max_ru.bin
+bundle/bin/tls_clienthello_sochi_park.bin
+bundle/bin/tls_clienthello_www_google_com.bin
+bundle/bin/tls_clienthello_www_sferum_ru.bin
+bundle/bin/WinDivert.dll
+bundle/bin/WinDivert64.sys
+bundle/bin/winws.exe
+bundle/general (ALT).bat
+bundle/general (ALT10).bat
+bundle/general (ALT11).bat
+bundle/general (ALT12).bat
+bundle/general (ALT13).bat
+bundle/general (ALT2).bat
+bundle/general (ALT3).bat
+bundle/general (ALT4).bat
+bundle/general (ALT5).bat
+bundle/general (ALT6).bat
+bundle/general (ALT7).bat
+bundle/general (ALT8).bat
+bundle/general (ALT9).bat
+bundle/general (EXP).bat
+bundle/general (FAKE TLS AUTO ALT).bat
+bundle/general (FAKE TLS AUTO ALT2).bat
+bundle/general (FAKE TLS AUTO ALT3).bat
+bundle/general (FAKE TLS AUTO).bat
+bundle/general (SIMPLE FAKE ALT).bat
+bundle/general (SIMPLE FAKE ALT2).bat
+bundle/general (SIMPLE FAKE).bat
+bundle/general.bat
+bundle/LICENSE.txt
+bundle/lists/ipset-all.txt
+bundle/lists/ipset-exclude.txt
+bundle/lists/list-exclude.txt
+bundle/lists/list-general.txt
+bundle/lists/list-google.txt
+bundle/README.md
+bundle/service.bat
+bundle/utils/check_updates.enabled
+bundle/utils/targets.txt
+bundle/utils/test zapret.ps1
+profiles/infolink-shchelkovo.json
+LICENSE => licenses/LICENSE
+THIRD_PARTY.md => licenses/THIRD_PARTY.md
+PYTHON-LICENSE.txt => licenses/PYTHON-LICENSE.txt
+GSAP-LICENSE.txt => licenses/GSAP-LICENSE.txt
+DESKTOP-LICENSES.txt => licenses/DESKTOP-LICENSES.txt

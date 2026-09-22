@@ -56,6 +56,9 @@ def main():
     if args.remove_service:
         remove_owned_service(base)
         return
+    if getattr(sys, "frozen", False):
+        from zapret_ui.bundled_payload import ensure_embedded_payload
+        ensure_embedded_payload(base, Path(sys._MEIPASS))
     webroot = Path(getattr(sys, "_MEIPASS", base)) / "web"
     controller = Controller(base)
     server = None

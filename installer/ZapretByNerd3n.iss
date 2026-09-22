@@ -3,7 +3,7 @@
   #error AppSource must name the staged application directory
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.3.5"
+  #define AppVersion "0.3.7"
 #endif
 #define DriverSHA256 GetSHA256OfFile(AppSource + "\bundle\bin\WinDivert64.sys")
 #ifndef SetupOutput
