@@ -1,0 +1,11 @@
+GSAP 3.15.0
+Copyright (c) 2008-2026, GreenSock. All rights reserved.
+Source package: https://www.npmjs.com/package/gsap/v/3.15.0
+Source repository: https://github.com/greensock/GSAP
+
+GSAP is distributed under its Standard "No Charge" License, not the MIT
+license of this application. The authoritative terms are available at:
+https://gsap.com/community/standard-license/
+
+The original copyright and license notice in web/vendor/gsap.min.js is
+preserved. This local copy is used to animate this application's interface.

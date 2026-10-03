@@ -1,2 +1,5 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Preserve the imported project's existing line endings and exact file bytes.
+* -text
+
+# Keep vendored Flowseal files byte-for-byte for provenance and payload hashes.
+bundle/** -text whitespace=cr-at-eol
